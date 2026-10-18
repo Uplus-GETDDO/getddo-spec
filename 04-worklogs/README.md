@@ -40,6 +40,8 @@
 
 ## 기록 목록
 
+- [2026-10-18 사용자 알림 오류 코드 정정](2026-10-18-notification-error-codes.md) — 검토 대기
+
 - [2026-10-17 최초 공개 알림 문구 동기화](2026-10-17-notification-publication-wording.md) — 검토 대기
 
 - [2026-10-16 타꼬런 FE·BE 계약 정렬](2026-10-16-takko-run-contract-alignment.md) — 검토 대기

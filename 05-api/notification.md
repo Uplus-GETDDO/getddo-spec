@@ -64,9 +64,9 @@
 | --- | --- | --- |
 | 400 | `COMMON-005` | UUID·쿼리 타입 해석 실패 또는 선택 멤버십 형식 오류 |
 | 400 | `NOTIFICATION-001` | size 범위 위반 또는 커서 형식 오류 |
-| 401 | `USER_CONTEXT_REQUIRED` | 필수 `X-User-ID` 누락 |
-| 401 | `USER_CONTEXT_INVALID` | 미등록 사용자 ID |
-| 409 | `USER_MEMBERSHIP_MISMATCH` | 선택 멤버십과 DB 값 불일치 |
+| 401 | `USER-003` | 필수 `X-User-ID` 또는 `X-User-Role` 누락 |
+| 401 | `USER-002` | 미등록 사용자 ID |
+| 409 | `USER-006` | 선택 멤버십과 DB 값 불일치 |
 | 404 | `NOTIFICATION-002` | N02의 알림이 없거나 본인 소유가 아님 |
 | 500 | `COMMON-001` | 예상하지 못한 서버 오류 |
 
