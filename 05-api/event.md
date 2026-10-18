@@ -15,9 +15,24 @@
 
 | DTO | 필드 |
 | --- | --- |
-| `EventSummary` | `id:UUID`, `title:string`, `imageUrl:string?`, `eventType:NO_TICKET/TICKET`, `weightingEnabled:boolean`, `membershipRule:excellent/vip/vvip`, `startsAt:instant`, `endsAt:instant`, `status:EventStatus`, `serverTime:instant` |
-| `EventDetail` | EventSummary 전체 + `description:string`, `maxTicketsPerUser:int?`, `prizes:Prize[]` |
+| `EventSummary` | `id:UUID`, `title:string`, `imageUrl:string?`, `eventType:NO_TICKET/TICKET`, `weightingEnabled:boolean`, `membershipRule:excellent/vip/vvip`, `startsAt:instant`, `endsAt:instant`, `status:EventStatus`, `serverTime:instant`, `myEntered:boolean` |
+| `EventDetail` | EventSummary에서 `myEntered`를 제외한 필드 + `description:string`, `maxTicketsPerUser:int?`, `prizes:Prize[]` |
 | `Prize` | `id:UUID`, `rank:int`, `name:string`, `description:string?`, `imageUrl:string?`, `winnerCount:int` |
+
+### 이벤트와 겟또타임 구분 (R4)
+
+화면의 기본 이벤트는 `eventType=NO_TICKET`(응모권 미사용), 겟또타임은 `eventType=TICKET`(응모권 사용)으로 구분한다. E01·AE01의 기존 `eventType` 필터로 각각 조회하며 별도 분류 필드는 추가하지 않는다. 겟또타임은 응모권 사용 이벤트 전체를 뜻하므로 가중치 여부나 월말 소진용 여부로 제한하지 않는다. 용어는 [공통 용어](../02-domain/glossary.md)를 따른다.
+
+### 사용자 목록의 내 응모 여부 (R7)
+
+`myEntered`는 E01의 각 `EventSummary`에 항상 반환하는 boolean이다. 사용자 상세 E02와 관리자 목록·상세의 `AdminEvent`에는 포함하지 않는다.
+
+- 요청 사용자가 해당 이벤트에 정상 접수된 응모를 가졌으면 `true`다. 응모권 미사용 이벤트도 포함하며, 차감한 응모권 수가 0인지로 판정하지 않는다.
+- 응모하지 않았거나 거절된 요청만 있으면 `false`다. 다른 사용자의 응모는 영향을 주지 않으며, 관리자 계정이 사용자 목록을 조회하면 `false`다.
+- 정상 접수 후 이벤트가 취소되거나 응모권이 반환돼도 기존 응모 기록에 따라 `true`를 유지한다.
+- 추가 응모 가능 여부나 당첨 여부를 나타내지 않는다. 추가 응모 자격은 [응모 API E07](entry.md#사용자-응모현황)에서 확인한다. 기존 사용자 문맥 필수 조건을 유지한다.
+
+### 조회 상태 표현
 
 `EventStatus`의 제안 값은 `SCHEDULED`, `OPEN`, `CLOSED`, `DRAW_CONFIRMED`, `PUBLISHED`, `CANCELED`, `REDRAWING`, `NO_ENTRANTS`다. 어뷰징 전원 제외 종료 상태는 신규 계약에서 사용하지 않는다. 과거 종료 상태의 조회 호환성은 담당자가 별도로 검토하며 저장 이력을 소급 변경하지 않는다. 현행 DB의 `SUSPENDED`는 이번 요구사항에서 제외된 상태이므로 API 계약에 포함하지 않는다. 관리자에게는 운영 상태를 제공하지만 사용자 목록·상세에서 `REDRAWING`을 그대로 노출하지 않는다. 이미 발표된 이벤트는 공개 상태를 유지하고 최초 발표 전에는 기존 대기 상태로 표현하도록 제안한다. 공개 결과에는 별도 공개 여부를 사용하며 이벤트 상태만으로 당첨 정보를 노출하지 않는다. 구체적인 중간 결과 표시 범위는 [결과 조회](drawing.md#공개-결과와-본인-결과)의 공개 중간 상태를 따른다.
 
@@ -27,7 +42,7 @@
 
 | ID | 메서드·경로 | 요청 | 성공 | 주요 오류 |
 | --- | --- | --- | --- | --- |
-| AE01 | `GET /admin/events` | `page,size,keyword,status,eventType,from,to` | 200 `Page<AdminEvent>` | 공통 |
+| AE01 | `GET /admin/events` | `page,size,keyword,status,eventType,from,to,sort,weightingEnabled,createdFrom,createdTo` | 200 `Page<AdminEvent>` | 공통, 400 `EVENT-008` 잘못된 검색 조건 |
 | AE02 | `GET /admin/events/{eventId}` | 없음 | 200 `AdminEvent` | 공통 |
 | AE03 | `POST /admin/events` | `EventWriteRequest` | 201 `AdminEvent` | 400 기간·경품·조건 오류 |
 | AE04 | `PUT /admin/events/{eventId}` | `EventWriteRequest` | 200 `AdminEvent` | 409 수정 불가 상태·시작 앞당김 |
@@ -46,6 +61,25 @@ AE01의 `from`, `to`는 각각 선택 `date`이며 KST 기준 `YYYY-MM-DD`로 �
 - 날짜 형식 오류·존재하지 않는 날짜·역전된 범위 등 잘못된 검색 입력은 400으로 거절한다.
 
 예를 들어 `from=2026-10-10&to=2026-10-23`은 KST `[2026-10-10T00:00:00+09:00, 2026-10-24T00:00:00+09:00)`, UTC `[2026-10-09T15:00:00Z, 2026-10-23T15:00:00Z)`와 겹치는 모집 기간을 검색한다. 모집 시작일이 10월 10일 전이어도 해당 기간과 겹치면 포함한다.
+
+### 관리자 이벤트 검색 확장 (R2)
+
+AE01에 다음 선택 파라미터를 추가한다. 기존 페이지·권한·응답 구조는 유지하며 E01에는 추가하지 않는다.
+
+| 파라미터 | 타입·허용 값 | 생략 시 |
+| --- | --- | --- |
+| `sort` | string, `createdAt` / `startsAt` / `endsAt` / `title` 중 하나와 `,asc` / `,desc` 조합. 예: `startsAt,asc` | `createdAt,desc` |
+| `weightingEnabled` | boolean, `true` / `false` | 가중치 여부로 제한하지 않음 |
+| `createdFrom` | date, KST `YYYY-MM-DD`, 이벤트 등록일 하한 포함 | 등록일 하한 없음 |
+| `createdTo` | date, KST `YYYY-MM-DD`, 이벤트 등록일 상한 포함 | 등록일 상한 없음 |
+
+- 정렬은 단일 조건만 받는다. 값이 같으면 이벤트 `id`도 같은 방향으로 정렬하며, 정렬한 결과에 페이지를 적용한다. 허용 목록 외 정렬은 400 `EVENT-008`로 거절한다.
+- `weightingEnabled=false`는 가중치를 사용하지 않는 이벤트만 조회한다. 필터 생략과 다르다.
+- `createdFrom`·`createdTo`는 모집 기간이 아닌 **이벤트 등록 시각 `createdAt`** 기준이다. KST 시작일 00:00 이상·종료일 다음 날 00:00 미만을 UTC 시각으로 비교하여 입력한 양끝 날짜를 포함한다. 같은 날짜도 검색할 수 있다.
+- 등록일 경계를 하나만 보내면 해당 하한 또는 상한만 적용한다. 둘 다 생략하면 등록일로 제한하지 않는다. 기존 `from`·`to`의 모집 기간 겹침 조건과 함께 사용할 수 있으며 모든 검색 조건은 AND로 적용한다. 전체 건수에도 같은 조건을 적용한다.
+- 날짜는 실제 존재하는 `YYYY-MM-DD`여야 하며 빈 값·확장 연도를 허용하지 않는다. `createdFrom > createdTo`나 지원 범위를 벗어난 UTC 검색 경계는 400 `EVENT-008`로 거절한다. 타입·형식·입력 검증 오류는 [공통 오류 계약](common.md#오류)을 따른다.
+
+예를 들어 `sort=startsAt,asc&weightingEnabled=true&createdFrom=2026-10-01&createdTo=2026-10-17`은 KST 10월 1~17일에 등록한 가중치 이벤트를 모집 시작 시각 오름차순으로 조회한다. 모집 기간도 제한하려면 `from`·`to`를 별도로 함께 전달한다.
 
 ## 이벤트·경품 동시 등록 및 수정
 
