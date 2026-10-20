@@ -15,8 +15,8 @@
 
 | DTO | 필드 |
 | --- | --- |
-| `EventSummary` | `id:UUID`, `title:string`, `imageUrl:string?`, `eventType:NO_TICKET/TICKET`, `weightingEnabled:boolean`, `membershipRule:excellent/vip/vvip`, `startsAt:instant`, `endsAt:instant`, `status:EventStatus`, `serverTime:instant`, `myEntered:boolean` |
-| `EventDetail` | EventSummary에서 `myEntered`를 제외한 필드 + `description:string`, `maxTicketsPerUser:int?`, `prizes:Prize[]` |
+| `EventSummary` | `id:UUID`, `title:string`, `imageUrl:string?`, `eventType:NO_TICKET/TICKET`, `weightingEnabled:boolean`, `membershipRule:excellent/vip/vvip`, `startsAt:instant`, `endsAt:instant`, `status:EventStatus`, `serverTime:instant`, `myEntered:boolean`, `winnerCount:long` |
+| `EventDetail` | EventSummary에서 `myEntered`, `winnerCount`를 제외한 필드 + `description:string`, `maxTicketsPerUser:int?`, `prizes:Prize[]` |
 | `Prize` | `id:UUID`, `rank:int`, `name:string`, `description:string?`, `imageUrl:string?`, `winnerCount:int` |
 
 ### 이벤트와 겟또타임 구분 (R4)
@@ -35,6 +35,16 @@
 ### 조회 상태 표현
 
 `EventStatus`의 제안 값은 `SCHEDULED`, `OPEN`, `CLOSED`, `DRAW_CONFIRMED`, `PUBLISHED`, `CANCELED`, `REDRAWING`, `NO_ENTRANTS`다. 어뷰징 전원 제외 종료 상태는 신규 계약에서 사용하지 않는다. 과거 종료 상태의 조회 호환성은 담당자가 별도로 검토하며 저장 이력을 소급 변경하지 않는다. 현행 DB의 `SUSPENDED`는 이번 요구사항에서 제외된 상태이므로 API 계약에 포함하지 않는다. 관리자에게는 운영 상태를 제공하지만 사용자 목록·상세에서 `REDRAWING`을 그대로 노출하지 않는다. 이미 발표된 이벤트는 공개 상태를 유지하고 최초 발표 전에는 기존 대기 상태로 표현하도록 제안한다. 공개 결과에는 별도 공개 여부를 사용하며 이벤트 상태만으로 당첨 정보를 노출하지 않는다. 구체적인 중간 결과 표시 범위는 [결과 조회](drawing.md#공개-결과와-본인-결과)의 공개 중간 상태를 따른다.
+
+### 사용자 목록의 당첨 예정 인원 합계 — GD-251
+
+- `winnerCount`는 해당 이벤트에 등록된 모든 경품의 `winnerCount` 합계다. 예를 들어 1등 1명·2등 3명이면 `4`다. 추첨으로 실제 선정된 당첨자 수·응모자 수·당첨 확률을 뜻하지 않는다. 응모권 미사용·사용 이벤트에 모두 적용한다.
+- 합계는 항상 0 이상의 JSON 정수(`long`, 64비트)로 반환한다. 각 경품의 인원은 기존 `int`지만 복수 경품 합계가 32비트 범위를 넘을 수 있으므로 합계는 `long`으로 제공한다. 경품이 없는 과거 데이터는 `0`이다. 등록·수정 시 경품 필수 조건은 유지한다.
+- 합계 필드는 E01에만 추가한다. E02와 관리자 응답은 기존 `prizes[].winnerCount`를 유지하며 최상위 `winnerCount`를 추가하지 않는다.
+- 요청 파라미터와 기존 최신 등록순, 상태·유형·멤버십 필터 및 삭제 제외 조건은 유지한다. 페이지 형식은 [공통 목록 계약](common.md#목록-조회)의 `page`, `size`, `items`, `totalElements`를 따른다.
+- 당첨 인원순 정렬과 태그·추천 필드는 이번 계약에 추가하지 않는다. AE01의 기존 정렬도 변경하지 않는다.
+
+예: `GET /events?eventType=NO_TICKET&page=1&size=12`의 `data.items[].winnerCount`로 기본 이벤트 카드의 당첨 예정 인원을 표시한다. 변경 전·후와 영향은 [GD-251 작업 기록](../04-worklogs/2026-10-20-event-winner-count.md)을 따른다. 이 문서 반영을 배포·FE 연동 완료로 해석하지 않는다.
 
 ## 관리자 이벤트 등록·운영
 
