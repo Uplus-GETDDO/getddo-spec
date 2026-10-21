@@ -92,7 +92,7 @@
 
 서버가 미션·문항·선택지·보상 정책의 ID를 생성하고 함께 저장한다. 퀴즈와 설문의 허용 타입은 [미션 문항](#미션문항)을 따른다. 선택형 퀴즈의 정답 개수, OX 표현, 단답 문자열 정규화와 다문항 완료 조건은 **미션 완료·채점 세부 계약**이다. 필수 여부와 정답 여부를 같은 개념으로 사용하지 않는다. 보상 수량 범위는 보상 수량·예약 정책 계약이다.
 
-`AdminMission`: `id:UUID`, MissionWrite 전체, `status:DRAFT/ACTIVE/ENDED`, `rewardPolicyId:UUID`, `createdBy:UUID`, `createdAt:instant`, `updatedAt:instant`; `questions`와 `options`에는 각각 생성된 `id:UUID`를 추가한다.
+`AdminMission`: `id:UUID`, MissionWrite 전체, `status:DRAFT/ACTIVE/ENDED`, `rewardPolicyId:UUID`, `createdBy:UUID`, `createdByName:string`, `createdAt:instant`, `updatedAt:instant`; `questions`와 `options`에는 각각 생성된 `id:UUID`를 추가한다.
 
 **현행 구현 범위(백엔드 GD-177)**: 세 경로는 활성 관리자만 호출할 수 있고 아니면 403 `MISSION-006`이다. 미션 상태는 `ACTIVE`/`ENDED`뿐이며 `DRAFT`는 없다. AM03으로 등록한 미션은 바로 `ACTIVE`이고 제출 가능 기간은 `startsAt`·`endsAt`이 정한다. 운영 종료 시각 `endsAt`이 지나면 서버가 저장 상태를 `ENDED`로 바꾼다(백엔드 GD-269, 종료 시각 정각부터이며 주기 처리라 최대 약 1분 늦게 반영될 수 있다). 제출 차단은 이 상태 전환과 무관하게 서버가 제출을 받은 시각과 기간으로 판단하고, `status` 필터와 `status` 응답은 저장 상태를 따른다. 미션 완료 보상은 등급 응모권 1장으로 고정이라 `rewardTicketCount`는 요청에서 생략하거나 1만 보낼 수 있고(다른 값은 400 `MISSION-001`) 응답 값은 항상 1이며, 서버가 미션마다 수량 1의 보상 정책을 만들어 `rewardPolicyId`로 연결한다. AM01은 운영 시작 시각 내림차순(같으면 `id` 내림차순)이고 `from`·`to`는 `startsAt`이 `[from, to)`인 미션을 거르며, 목록의 `AdminMission`에는 `questions`가 없다. 퀴즈 문항에는 `required`가, 설문 문항에는 `correctAnswer`·`isCorrect`가 없다. 선택형 퀴즈(OX·단일 선택)는 선택지 2개 이상에 정답이 정확히 하나여야 하고 어기면 400 `MISSION-001`이다. 필수값 누락·길이 초과는 400 `COMMON-002`다. 없는 미션은 404 `MISSION-003`이다. 등록은 감사 기록(`MISSION_CREATE`)을 남긴다.
 
@@ -115,3 +115,9 @@
 ## 2026-10-17 플래티넘 등급 계약 반영
 
 위 등급 목록에는 플래티넘(`PLATINUM`) 추가 정책을 반영했다. 플래티넘 지원의 서비스 적용 시점과 구현·프론트엔드 연동 검증은 후속 사항이며, 기존의 구현 반영 표기를 플래티넘 지원 완료로 해석하지 않는다. 확률·가중치는 [응모권 규칙](../02-domain/ticket.md#게임미션-보상의-등급-추첨), 전환 후속은 [등급 응모권 후속 사항](../00-requirements/pending-decisions.md#등급-응모권)을 따른다.
+
+## 2026-10-21 관리자 미션 작성자 이름 추가
+
+> 2026-10-21 사용자 확정·구현 예정: 아래 계약에 추가한 이름 필드는 아직 백엔드 구현·배포 완료를 뜻하지 않는다. 기존 ID·응답 구조는 유지하며 이름의 의미는 [관리자 응답의 사용자·처리자 이름](common.md#관리자-응답의-사용자처리자-이름)을 따른다.
+
+변경 전에는 AM01·AM02·AM03의 `AdminMission`이 작성자 ID만 제공했다. 변경 후 `createdByName:string`을 추가한다. 작성자는 미션에 참여한 사용자가 아닌 `createdBy`로 식별되는 관리자이며 현재 이름을 표시한다. 설문 자유 서술 응답의 익명성은 유지하고 참여자 이름·식별자는 추가하지 않는다.

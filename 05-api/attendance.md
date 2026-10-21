@@ -59,9 +59,9 @@ AT02는 날짜나 보상량을 입력받지 않는다. 서버 KST 업무일로 �
 | AP05 | `PUT /admin/policies/attendance/daily/{policyId}` | 필수 `rewardTicketCount:int(≥1)` | 200 `DailyAttendancePolicy` | 400 수량 오류, 404 없는 정책, 409 이미 시작한 정책 |
 | AP06 | `PUT /admin/policies/attendance/streak/{policySetId}` | 필수 `milestones:MilestoneWrite[]` | 200 `StreakPolicySet` | 400 단계 오류, 404 없는 묶음, 409 이미 시작한 묶음 |
 
-`DailyAttendancePolicy`: `id:UUID`, `rewardTicketCount:int`, `effectiveFrom:instant`, `effectiveUntil:instant?`, `createdBy:UUID`, `createdAt:instant`.
+`DailyAttendancePolicy`: `id:UUID`, `rewardTicketCount:int`, `effectiveFrom:instant`, `effectiveUntil:instant?`, `createdBy:UUID`, `createdByName:string`, `createdAt:instant`.
 
-`MilestoneWrite`: `milestoneDays:int(1~28)`, `rewardTicketCount:int(≥1)`. 배열은 단계 일수 오름차순이고 중복이 없어야 한다. `StreakPolicySet`: `id:UUID`, `effectiveMonth:month`, `milestones:{id:UUID,milestoneDays:int,rewardTicketCount:int}[]`, `createdBy:UUID`, `createdAt:instant`.
+`MilestoneWrite`: `milestoneDays:int(1~28)`, `rewardTicketCount:int(≥1)`. 배열은 단계 일수 오름차순이고 중복이 없어야 한다. `StreakPolicySet`: `id:UUID`, `effectiveMonth:month`, `milestones:{id:UUID,milestoneDays:int,rewardTicketCount:int}[]`, `createdBy:UUID`, `createdByName:string`, `createdAt:instant`.
 
 일일 정책의 적용 시각은 다음 KST 자정, 연속 정책은 다음 KST 월초를 서버가 계산한다. 사용자가 과거 적용일을 지정하지 못한다. 같은 적용일/월에 이미 예약된 정책이 있을 때 새로 등록하면 충돌(409)이고, 예약된 정책은 시작 전까지 AP05·AP06으로 수정한다. 적용 중이거나 지난 정책은 수정할 수 없고 적용 시점은 바뀌지 않는다. 현재 월의 판정·기존 보상 기록은 유지한다. 보상 1장 고정인 게임에 임의 수량 변경 API를 만들지 않는다.
 
@@ -70,3 +70,9 @@ AT02는 날짜나 보상량을 입력받지 않는다. 서버 KST 업무일로 �
 **예약 정책 수정(백엔드 GD-270)**: AP05·AP06도 활성 관리자만 호출할 수 있다. 수정할 수 있는 것은 아직 시작하지 않은 정책뿐이며, 일일 정책은 적용 시작 시각 정각부터, 연속 정책은 적용월 1일(KST)부터 시작한 것으로 보고 수정을 거절한다(409 `ATTENDANCE-007`). 없는 정책은 404 `ATTENDANCE-006`이다. AP05는 보상 수량만, AP06은 단계 전체를 요청한 단계로 바꾸며 적용 시점(시작·종료 시각, 적용월)은 바뀌지 않는다. 예약 취소(삭제)는 제공하지 않는다. 수정은 감사 기록(`ATTENDANCE_DAILY_POLICY_UPDATE`, `ATTENDANCE_STREAK_POLICY_UPDATE`)을 남기며 수정 전·후 값을 담는다.
 
 [attendance]: ../02-domain/attendance.md
+
+## 2026-10-21 관리자 출석 정책 작성자 이름 추가
+
+> 2026-10-21 사용자 확정·구현 예정: 아래 계약에 추가한 이름 필드는 아직 백엔드 구현·배포 완료를 뜻하지 않는다. 기존 ID·응답 구조는 유지하며 이름의 의미는 [관리자 응답의 사용자·처리자 이름](common.md#관리자-응답의-사용자처리자-이름)을 따른다.
+
+변경 전에는 `DailyAttendancePolicy`·`StreakPolicySet`이 작성자 ID만 제공했다. 변경 후 `createdByName:string`을 추가한다. AP01~AP06에서 이 DTO를 반환할 때 정책을 만든 관리자의 현재 이름을 제공한다. 출석한 사용자나 이후 수정자의 이름으로 해석하지 않는다. 정책 적용일·보상·출석 업무 규칙은 유지한다.

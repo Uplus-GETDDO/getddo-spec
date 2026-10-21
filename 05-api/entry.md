@@ -58,6 +58,8 @@
 
 ## 관리자 응모·응모자 조회
 
+> 2026-10-21 사용자 확정·구현 예정: 아래 계약에 추가한 이름 필드는 아직 백엔드 구현·배포 완료를 뜻하지 않는다. 기존 ID·응답 구조는 유지하며 이름의 의미는 [관리자 응답의 사용자·처리자 이름](common.md#관리자-응답의-사용자처리자-이름)을 따른다.
+
 | ID | 메서드·경로 | 요청 | 성공 | 주요 오류 |
 | --- | --- | --- | --- | --- |
 | AO06 | `GET /admin/entries` | `page,size,userId,eventId,status,from,to` | 200 `Page<AdminEntry>` | 공통 |
@@ -65,8 +67,8 @@
 
 | DTO | 필드 |
 | --- | --- |
-| `AdminEntry` | EntryReceipt 전체 + `userId:UUID`, `participantId:UUID?` |
-| `AdminParticipant` | `id:UUID`, `eventId:UUID`, `userId:UUID`, `usedTicketCount:long`, `createdAt:instant` |
+| `AdminEntry` | EntryReceipt 전체 + `userId:UUID`, `userName:string`, `participantId:UUID?` |
+| `AdminParticipant` | `id:UUID`, `eventId:UUID`, `userId:UUID`, `userName:string`, `usedTicketCount:long`, `createdAt:instant` |
 
 **현행 구현 범위(백엔드 GD-218)**: 두 경로는 활성 관리자만 호출할 수 있고 아니면 403 `ENTRY-010`(`ADMIN_REQUIRED`)이다. AO06은 접수와 거절 이력을 모두 `createdAt`(`requestedAt`) 내림차순, 같으면 `id` 내림차순으로 돌려주며 `from`·`to`는 E06과 같이 `[from, to)`다. 거절 건의 `participantId`는 `null`이다. AO07은 최초 응모 시각 내림차순, 같으면 `id` 내림차순이고, 없는 이벤트는 404 `ENTRY-004`이며 삭제된 이벤트의 응모자는 조회할 수 있다. `size`는 1~100이다.
 
@@ -79,3 +81,7 @@
 위 등급 목록에는 플래티넘(`PLATINUM`) 추가 정책을 반영했다. 플래티넘 지원의 서비스 적용 시점과 구현·프론트엔드 연동 검증은 후속 사항이며, 기존의 구현 반영 표기를 플래티넘 지원 완료로 해석하지 않는다. 확률·가중치는 [응모권 규칙](../02-domain/ticket.md#게임미션-보상의-등급-추첨), 전환 후속은 [등급 응모권 후속 사항](../00-requirements/pending-decisions.md#등급-응모권)을 따른다.
 
 백엔드 구현 현황(2026-10-19): 응모 요청·응답의 등급 맵과 응모권 조회에 `PLATINUM` 키를 지원하도록 구현해 병합했다(GD-228). 추첨 가중치 10과 스냅샷 호환(GD-230), 지급 확률 0.02% 활성화(GD-229)도 `dev`에 병합됐다. 배포는 정기 릴리스를 따르며 2026-10-20 오전 릴리스부터 반영될 예정이다(실제 배포 확인 전). 프론트엔드는 `dev` 코드에서 응모 요청·응답을 4개 등급으로 처리하는 것을 확인했으나 실서버 동작 검증은 아직이다.
+
+## 2026-10-21 관리자 사용자 이름 추가
+
+변경 전에는 AO06·AO07이 사용자 ID만 제공했다. 변경 후 `AdminEntry`·`AdminParticipant`에 `userName:string`을 추가한다(구현 예정). 접수·거절 내역과 응모자 목록에 해당 사용자의 현재 이름을 표시하며 ID·접수/거절 근거·집계·정렬은 유지한다. [관리자 응답의 사용자·처리자 이름](common.md#관리자-응답의-사용자처리자-이름)을 따른다.
