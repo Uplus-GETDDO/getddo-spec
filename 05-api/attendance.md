@@ -1,6 +1,6 @@
 # 출석 API
 
-- 상태: 사용자 API(AT01~AT03) 구현 반영, 관리자 출석 정책(AP01~AP04) 구현(백엔드 GD-219)
+- 상태: 사용자 API(AT01~AT03) 구현 반영, 관리자 출석 정책(AP01~AP04) 구현(백엔드 GD-219), 예약 정책 수정(AP05·AP06) 구현(백엔드 GD-270)
 - 공통 계약: [공통 API 계약](common.md)
 - 도메인 규칙: [출석 규칙](../02-domain/attendance.md)
 
@@ -53,16 +53,20 @@ AT02는 날짜나 보상량을 입력받지 않는다. 서버 KST 업무일로 �
 | ID | 메서드·경로 | 요청 | 성공 | 주요 오류 |
 | --- | --- | --- | --- | --- |
 | AP01 | `GET /admin/policies/attendance/daily` | `page,size` | 200 `Page<DailyAttendancePolicy>` | 공통 |
-| AP02 | `POST /admin/policies/attendance/daily` | 필수 `rewardTicketCount:int(≥1)` | 201 `DailyAttendancePolicy` | 400 수량 오류, 409 적용일 중복; 최대값·예약 정책 재수정은 보상 수량·예약 정책 계약 |
+| AP02 | `POST /admin/policies/attendance/daily` | 필수 `rewardTicketCount:int(≥1)` | 201 `DailyAttendancePolicy` | 400 수량 오류, 409 적용일 중복; 최대값은 보상 수량·예약 정책 계약, 예약 정책 수정은 AP05 |
 | AP03 | `GET /admin/policies/attendance/streak` | `page,size` | 200 `Page<StreakPolicySet>` | 공통 |
 | AP04 | `POST /admin/policies/attendance/streak` | 필수 `milestones:MilestoneWrite[]` | 201 `StreakPolicySet` | 400 단계 오류, 409 적용월 중복 |
+| AP05 | `PUT /admin/policies/attendance/daily/{policyId}` | 필수 `rewardTicketCount:int(≥1)` | 200 `DailyAttendancePolicy` | 400 수량 오류, 404 없는 정책, 409 이미 시작한 정책 |
+| AP06 | `PUT /admin/policies/attendance/streak/{policySetId}` | 필수 `milestones:MilestoneWrite[]` | 200 `StreakPolicySet` | 400 단계 오류, 404 없는 묶음, 409 이미 시작한 묶음 |
 
 `DailyAttendancePolicy`: `id:UUID`, `rewardTicketCount:int`, `effectiveFrom:instant`, `effectiveUntil:instant?`, `createdBy:UUID`, `createdAt:instant`.
 
 `MilestoneWrite`: `milestoneDays:int(1~28)`, `rewardTicketCount:int(≥1)`. 배열은 단계 일수 오름차순이고 중복이 없어야 한다. `StreakPolicySet`: `id:UUID`, `effectiveMonth:month`, `milestones:{id:UUID,milestoneDays:int,rewardTicketCount:int}[]`, `createdBy:UUID`, `createdAt:instant`.
 
-일일 정책의 적용 시각은 다음 KST 자정, 연속 정책은 다음 KST 월초를 서버가 계산한다. 사용자가 과거 적용일을 지정하지 못한다. 같은 적용일/월의 예약 정책 재수정 방식은 **보상 수량·예약 정책 계약**이며 이 초안은 중복 생성 충돌을 제안한다. 현재 월의 판정·기존 보상 기록은 유지한다. 보상 1장 고정인 게임에 임의 수량 변경 API를 만들지 않는다.
+일일 정책의 적용 시각은 다음 KST 자정, 연속 정책은 다음 KST 월초를 서버가 계산한다. 사용자가 과거 적용일을 지정하지 못한다. 같은 적용일/월에 이미 예약된 정책이 있을 때 새로 등록하면 충돌(409)이고, 예약된 정책은 시작 전까지 AP05·AP06으로 수정한다. 적용 중이거나 지난 정책은 수정할 수 없고 적용 시점은 바뀌지 않는다. 현재 월의 판정·기존 보상 기록은 유지한다. 보상 1장 고정인 게임에 임의 수량 변경 API를 만들지 않는다.
 
-**현행 구현 범위(백엔드 GD-219)**: 네 경로는 활성 관리자만 호출할 수 있고 아니면 403 `ATTENDANCE-002`다. 조회는 `size` 1~100이며 AP01은 적용 시작 시각, AP03은 적용월 내림차순(같으면 `id` 내림차순)이다. AP02는 현재 열린 정책의 `effectiveUntil`을 새 정책의 `effectiveFrom`(다음 KST 자정)으로 정하고, AP04의 `effectiveMonth`는 다음 KST 기준월이다. 단계는 일수 오름차순·중복 없음(위반 시 400 `ATTENDANCE-003`)이고, 같은 적용일·적용월의 예약 정책이 있으면 409(`ATTENDANCE-004`·`ATTENDANCE-005`)다. 필수값 누락·범위 밖은 400 `COMMON-002`, 형식 오류는 400 `COMMON-005`다. 예약 정책을 고치는 API는 아직 없다. 등록은 감사 기록(`ATTENDANCE_DAILY_POLICY_CREATE`, `ATTENDANCE_STREAK_POLICY_CREATE`)을 남긴다.
+**현행 구현 범위(백엔드 GD-219)**: 네 경로는 활성 관리자만 호출할 수 있고 아니면 403 `ATTENDANCE-002`다. 조회는 `size` 1~100이며 AP01은 적용 시작 시각, AP03은 적용월 내림차순(같으면 `id` 내림차순)이다. AP02는 현재 열린 정책의 `effectiveUntil`을 새 정책의 `effectiveFrom`(다음 KST 자정)으로 정하고, AP04의 `effectiveMonth`는 다음 KST 기준월이다. 단계는 일수 오름차순·중복 없음(위반 시 400 `ATTENDANCE-003`)이고, 같은 적용일·적용월의 예약 정책이 있으면 409(`ATTENDANCE-004`·`ATTENDANCE-005`)다. 필수값 누락·범위 밖은 400 `COMMON-002`, 형식 오류는 400 `COMMON-005`다. 등록은 감사 기록(`ATTENDANCE_DAILY_POLICY_CREATE`, `ATTENDANCE_STREAK_POLICY_CREATE`)을 남긴다.
+
+**예약 정책 수정(백엔드 GD-270)**: AP05·AP06도 활성 관리자만 호출할 수 있다. 수정할 수 있는 것은 아직 시작하지 않은 정책뿐이며, 일일 정책은 적용 시작 시각 정각부터, 연속 정책은 적용월 1일(KST)부터 시작한 것으로 보고 수정을 거절한다(409 `ATTENDANCE-007`). 없는 정책은 404 `ATTENDANCE-006`이다. AP05는 보상 수량만, AP06은 단계 전체를 요청한 단계로 바꾸며 적용 시점(시작·종료 시각, 적용월)은 바뀌지 않는다. 예약 취소(삭제)는 제공하지 않는다. 수정은 감사 기록(`ATTENDANCE_DAILY_POLICY_UPDATE`, `ATTENDANCE_STREAK_POLICY_UPDATE`)을 남기며 수정 전·후 값을 담는다.
 
 [attendance]: ../02-domain/attendance.md

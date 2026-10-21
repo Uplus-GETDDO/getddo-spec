@@ -1,6 +1,6 @@
 # 사용자 API 초안
 
-- 상태: AO01/AO02 관리자 조회 계약 사용자 확인 완료 (2026-10-15) / 본인 정보 초안 (U01 비활성 거절은 2026-10-16 사용자 요청으로 현행 구현 반영)
+- 상태: AO01/AO02 관리자 조회 계약 사용자 확인 완료 (2026-10-15), AO01 totalUserCount 추가 사용자 요청 반영 (2026-10-19) / 본인 정보 초안 (U01 비활성 거절은 2026-10-16 사용자 요청으로 현행 구현 반영)
 - 공통 계약: [공통 API 계약](common.md)
 
 AO01/AO02는 아래 상세 계약을 따른다. 본인 정보는 아래에 현행 구현으로 명시한 비활성 거절 조건을 제외하고 초안 상태를 유지한다. 확정된 업무 정책은 연결된 요구사항·도메인 문서를 따른다.
@@ -21,11 +21,12 @@ U01의 현행 구현은 공통 사용자 문맥 검증을 통과한 사용자가
 
 | ID | 메서드·경로 | 요청 | 성공 | 주요 오류 |
 | --- | --- | --- | --- | --- |
-| AO01 | `GET /admin/users` | `page,size,userId,keyword,role,status,membership` | 200 `Page<AdminUser>` | 공통 |
+| AO01 | `GET /admin/users` | `page,size,userId,keyword,role,status,membership` | 200 `AdminUserList` | 공통 |
 | AO02 | `GET /admin/users/{userId}` | 없음 | 200 `AdminUser` | 공통 |
 
 | DTO | 필드 |
 | --- | --- |
+| `AdminUserList` | `items:AdminUser[]`, `page:int`, `size:int`, `totalElements:long`, `totalUserCount:long` |
 | `AdminUser` | `id:UUID`, `name:string(≤20)`, `role:USER/ADMIN`, `status:ACTIVE/INACTIVE`, `membership:excellent/vip/vvip/null`, `createdAt:instant`, `updatedAt:instant` |
 
 관리자 조회는 읽기 전용이다. 사용자 역할·멤버십 모델은 백엔드 사용자 기능과 협의한다.
@@ -45,6 +46,29 @@ U01의 현행 구현은 공통 사용자 문맥 검증을 통과한 사용자가
 - page 기본 1·1 이상, size 기본 20·1~100. 정렬은 createdAt DESC·id DESC이며 Page의 totalElements는 선택 필터에 맞는 전체 건수다. 빈 결과·마지막 페이지 이후는 빈 items다.
 - 선택 필터 userId·keyword·role·status·membership는 AND로 적용한다. userId는 정확한 UUID, role/status는 기존 대문자 코드, membership는 기존 소문자 코드다. 조회 대상은 비활성 사용자·관리자도 포함하며 전달한 필터로 좁힌다.
 - keyword는 양끝 공백을 제거한 이름 부분 검색이다. 빈 검색어는 이름 필터가 없으며 최대 20자다. `%`·`_` 등의 문자는 와일드카드로 확대하지 않고 입력한 문자로 검색한다.
-- 성공은 HTTP 200과 기존 응답 봉투다. 목록은 Page<AdminUser>, 상세는 AdminUser이며 membership이 없으면 null이다. 필수 생성/수정 시각은 UTC instant다.
+- 성공은 HTTP 200과 기존 응답 봉투다. 목록은 AdminUserList, 상세는 AdminUser이며 membership이 없으면 null이다. 필수 생성/수정 시각은 UTC instant다.
 - UUID·enum·숫자 타입 해석 실패는 공통 400 COMMON-005다. 페이지/크기·검색어 조건 위반은 400 USER-008(`사용자 조회 조건이 올바르지 않습니다.`), 호출자 자격 위반은 403 USER-009(`활성 관리자만 사용자 정보를 조회할 수 있습니다.`), 없는 상세는 404 USER-010(`사용자를 찾을 수 없습니다.`)을 사용한다. 현재 사용자 식별·헤더 대조 오류는 공통 계약을 그대로 따른다.
 - 조회는 사용자 정보·권한·멤버십·정지 상태를 변경하지 않는다. FE 사용자 선택 경로와 A 담당의 사용자·인증 기능에 영향을 주는 수정은 먼저 담당 경계를 확인한다.
+
+### AO01 전체 활성 일반 사용자 수 — 2026-10-19 사용자 요청
+
+- 변경 전: 목록 응답은 공통 Page 필드만 제공했다. 활성 일반 사용자 전체 수를 읽으려면 `role=USER&status=ACTIVE`를 전달하고 `data.totalElements`를 사용해야 했다.
+- 변경 후: 기존 페이지 필드 옆에 `data.totalUserCount`를 추가한다. 이 값은 DB 전체에서 `role=USER`이면서 `status=ACTIVE`인 현재 사용자 수이며, 목록의 `userId`·`keyword`·`role`·`status`·`membership`·`page`·`size` 조건과 무관하다. 별도 필터를 보내지 않아도 항상 반환하고 활성 일반 사용자가 없으면 0이다.
+- `data.totalElements`는 요청한 검색 조건에 맞는 전체 건수라는 기존 의미를 유지한다. 빈 검색 결과나 범위 밖 페이지에서도 `totalUserCount`는 DB 전체의 활성 일반 사용자 수다. AO02 상세 응답에는 추가하지 않는다.
+- 프론트는 대시보드 참여율 분모로 `data.totalUserCount`를 사용할 수 있다. [일별 집계](admin-stats.md)의 같은 이름 필드와 기준이 같으며 과거 날짜별 사용자 수가 아니다. 일별 집계를 이미 호출하면 사용자 목록을 추가로 호출할 필요가 없다.
+- 백엔드는 AO01 응답에 필드를 추가하고 프론트는 기존 목록 필드를 유지하면서 새 필드를 읽는다. 아래 예시는 활성 일반 사용자가 1,200명인 DB에서 `GET /api/v1/admin/users?role=ADMIN&status=INACTIVE`의 검색 결과가 없는 경우다. 배포 서버의 실제 응답 확인 결과를 의미하지 않는다.
+
+```json
+{
+  "success": true,
+  "code": "SUCCESS",
+  "message": "성공했습니다.",
+  "data": {
+    "items": [],
+    "page": 1,
+    "size": 20,
+    "totalElements": 0,
+    "totalUserCount": 1200
+  }
+}
+```
