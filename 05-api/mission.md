@@ -84,6 +84,7 @@
 | AM02 | `GET /admin/missions/{missionId}` | 없음 | 200 `AdminMission` | 공통 |
 | AM03 | `POST /admin/missions` | `MissionWrite` | 201 `AdminMission` | 400 문항·정답·기간·수량 오류 |
 | AM04 | `GET /admin/missions/{missionId}/survey-summary` | 필수 `from`,`to`(KST 날짜) | 200 `SurveySummary` | 400 설문이 아닌 미션·기간 오류, 404 `MISSION-003` |
+| AM05 | `GET /admin/missions/{missionId}/survey-answers` | 필수 `questionId`,`from`,`to`(KST 날짜), `page,size` | 200 `Page<SurveyFreeTextAnswer>` | 400 설문이 아닌 미션·자유 서술 문항이 아닌 `questionId`·기간 오류, 404 `MISSION-003` |
 
 `MissionWrite`: 필수 `title:string(1~200)`, `description:string`, `missionType:SURVEY/QUIZ`, `startsAt:instant`, `endsAt:instant`, `rewardTicketCount:int(≥1)`, `questions:AdminQuestionWrite[]`; 선택 `imageKey:string/null(≤500)`.
 
@@ -98,6 +99,10 @@
 `SurveySummary`: `dailyResponses:{date:date,count:long}[]`, `questions:{questionId:UUID,questionText:string,options:{optionId:UUID,optionText:string,count:long}[]}[]`.
 
 **AM04 설문 응답 집계(구현, 백엔드 GD-223)**: 프론트 요청 R5(관리자 대시보드의 설문 추이)에 따른 새 API이며 위 경로와 필드대로 구현해 병합했다. 활성 관리자만 호출할 수 있고(403 `MISSION-006`) 읽기 전용이다. `from`·`to`는 KST 날짜(`YYYY-MM-DD`, 양끝 포함)로 둘 다 필수이고 `to`가 `from`과 같거나 이후이며 최대 31일이다(누락은 400 `COMMON-002`, 형식 오류는 400 `COMMON-005`, 기간 규칙 위반은 400 `MISSION-001`). 완료된 설문 제출만 센다. `dailyResponses`는 완료된 제출 수를 제출 시각의 KST 날짜별로 담고 응답 없는 날도 `count: 0`으로 포함한다. `questions`는 단일 선택 문항만 담고(자유 서술은 제외) 문항과 선택지는 표시 순서 오름차순이며, 고른 사람이 없는 선택지도 `count: 0`으로 포함한다. 퀴즈 미션이면 400 `MISSION-001`, 없는 미션은 404 `MISSION-003`이다. 긍정/부정 묶음은 프론트가 선택지를 묶어 표시한다.
+
+`SurveyFreeTextAnswer`: `answerText:string`, `submittedAt:instant`. 익명이라 사용자·제출 식별자와 이름은 담지 않는다.
+
+**AM05 설문 자유 서술 답변 조회(구현, 백엔드 GD-271)**: AM04가 자유 서술 문항을 집계에서 제외해 관리자가 서술 답변 내용을 볼 수 없던 점을 메우는 새 API다. 활성 관리자만 호출할 수 있고(403 `MISSION-006`) 읽기 전용이다. `questionId`는 이 미션의 자유 서술 문항이어야 하며(선택형 문항·다른 미션의 문항·없는 ID는 400 `MISSION-001`), `from`·`to`는 AM04와 같은 KST 날짜 규칙이다(누락은 400 `COMMON-002`, 형식 오류는 400 `COMMON-005`, 기간 규칙 위반은 400 `MISSION-001`). `page`는 1부터 기본 1, `size`는 1~100 기본 20이다. 완료된 설문 제출이 해당 문항에 남긴 답변만 제출 시각 최신순(같으면 답변 ID 내림차순)으로 돌려주고, 답변이 비어 있는 제출은 담지 않는다. 퀴즈 미션이면 400 `MISSION-001`, 없는 미션은 404 `MISSION-003`이다. 답변 원문은 가공하지 않으므로 화면은 HTML로 해석하지 않고 텍스트로 표시한다. 사용자가 답변에 쓴 개인정보는 마스킹하지 않는다.
 
 운영 중인 미션의 문항·조건·보상은 수정하지 않는다. 변경은 새 미션 AM03으로 등록한다. 시작 전 초안 수정·공개·종료·삭제의 허용 범위와 요청 계약은 **미션 상태 운영 계약**에 따른다.
 
