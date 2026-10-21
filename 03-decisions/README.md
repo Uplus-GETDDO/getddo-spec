@@ -32,6 +32,8 @@
 
 - [ADR-023: 배너의 이벤트 연결·관리 순서·이미지 주소 분리](023-banner-event-order-image-url.md) — 채택
 
+- [ADR-026: 최초 자동 추첨 대기 시간을 1분으로 단축](026-one-minute-initial-draw.md) — 제안
+
 ## 작성 대상
 
 - 여러 기능이나 코드 저장소에 영향을 주는 결정
