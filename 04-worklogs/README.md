@@ -40,6 +40,8 @@
 
 ## 기록 목록
 
+- [2026-10-23 GD-314 추첨 공개 오류·실행 감사 표시·장애 대응 기준 정리](2026-10-23-gd314-draw-operations.md) — 검토 대기
+
 - [2026-10-18 사용자 알림 오류 코드 정정](2026-10-18-notification-error-codes.md) — 검토 대기
 
 - [2026-10-17 최초 공개 알림 문구 동기화](2026-10-17-notification-publication-wording.md) — 검토 대기
