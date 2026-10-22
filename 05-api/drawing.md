@@ -84,6 +84,8 @@ AD01~AD07의 업무 ID를 유지하고 검증 이력·실행 시작 및 재개�
 
 ## 개별 취소·재추첨 — GD-138 일부 계약 확정
 
+> 2026-10-21 사용자 확정·구현 예정: 아래 계약에 추가한 이름 필드는 아직 백엔드 구현·배포 완료를 뜻하지 않는다. 기존 ID·응답 구조는 유지하며 이름의 의미는 [관리자 응답의 사용자·처리자 이름](common.md#관리자-응답의-사용자처리자-이름)을 따른다.
+
 2026-10-12 사용자 승인 범위는 아래 항목이다. AD09 응답은 기존 메타데이터 전용 `DrawRun` 초안에서 GD-87의 `DrawExecutionResponse` 재사용으로 변경해 확정 결과 재반환을 응답에서도 확인한다. 프론트엔드는 AD09의 `runId`, `status`, `confirmation`을 사용한다. 다른 조회·공개 API의 `DrawRun` 계약은 이 승인으로 변경하지 않는다.
 
 | 항목           | 확인한 계약                                                                                                 |
@@ -97,11 +99,13 @@ AD01~AD07의 업무 ID를 유지하고 검증 이력·실행 시작 및 재개�
 | 거절           | 없는 대상 404, 취소 불가·멱등 키/본문 충돌 409. 형식·사유 검증 실패는 400, 유효 비관리자 문맥은 403         |
 | 동시 취소      | 같은 이벤트에 미확정 REPLACEMENT가 있으면 다른 당첨의 새 취소는 409. 기존 취소 재요청·AD09 시작/재개는 허용 |
 
-`confirmation`은 `confirmedAt:instant`와 저장된 `results` 목록이다. 결과 항목은 `resultId:UUID`, `prizeId:UUID`, `rank:int`, `slotNumber:int`, `selectionOrder:int?`, `candidateId:UUID?`, `userId:UUID?`, `resultType:SELECTED/UNFILLED`를 제공한다. CONFIRMED 재요청은 같은 저장 결과를 반환하며 재선정하지 않는다. 실패 원문·스택 트레이스를 응답에 추가하지 않는다.
+`confirmation`은 `confirmedAt:instant`와 저장된 `results` 목록이다. 결과 항목은 `resultId:UUID`, `prizeId:UUID`, `rank:int`, `slotNumber:int`, `selectionOrder:int?`, `candidateId:UUID?`, `userId:UUID?`, `userName:string?`, `resultType:SELECTED/UNFILLED`를 제공한다. CONFIRMED 재요청은 같은 저장 결과를 반환하며 재선정하지 않는다. 실패 원문·스택 트레이스를 응답에 추가하지 않는다.
 
 2026-10-13 사용자 결정으로 취소 멱등 키의 전역 범위와 `CANCEL-001`~`CANCEL-004`의 의미·HTTP 상태를 아래 GD-169 계약 절에서 확정했다. 다른 오류 코드 사전 전체는 확정하지 않는다. 전체 당첨 취소·전체 재추첨, 공개 전환과 어뷰징 근거 연결도 이번 API 승인으로 확정하지 않는다.
 
 ## 실행·후보·결과·검증 응답
+
+> 2026-10-21 사용자 확정·구현 예정: 아래 계약에 추가한 이름 필드는 아직 백엔드 구현·배포 완료를 뜻하지 않는다. 기존 ID·응답 구조는 유지하며 이름의 의미는 [관리자 응답의 사용자·처리자 이름](common.md#관리자-응답의-사용자처리자-이름)을 따른다.
 
 | DTO                    | 필드                                                                                                                                                                                                                                              |
 | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -109,11 +113,11 @@ AD01~AD07의 업무 ID를 유지하고 검증 이력·실행 시작 및 재개�
 | `DrawRunDetail`        | DrawRun 전체 + `algorithmVersion:string?`, `rulesSnapshot:object?`, `snapshotFixedAt:instant?`, `results:DrawResult[]`, `execution:DrawExecutionSummary`                                                                                          |
 | `DrawExecutionSummary` | `failureCount:long`, `latestFailure:DrawFailure?`, `retryAt:instant?`, `waitingForOperator:boolean`, `cancellations:CancellationSummary[]`                                                                                                        |
 | `DrawFailure`          | `id:UUID`, `runId:UUID`, `failureCode:string`, `message:string`, `failedAt:instant`, `traceId:string?`                                                                                                                                            |
-| `DrawExecutionAudit`   | `id:UUID`, `actorId:UUID?`, `action:string`, `reason:string?`, `beforeData:string?`, `afterData:string?`, `requestId:string?`, `createdAt:instant`                                                                                                |
-| `CancellationSummary`  | `id:UUID`, `resultId:UUID`, `replacementRunId:UUID?`, `canceledBy:UUID`, `reason:string`, `canceledAt:instant`                                                                                                                                    |
-| `DrawCandidate`        | `id:UUID`, `participantId:UUID`, `userId:UUID`, `ticketCount:long`, `weight:long`, `entrySnapshot:object`, `eligibilitySnapshot:object`                                                                                                           |
-| `DrawResult`           | `id:UUID`, `prizeId:UUID`, `prizeRank:int`, `slotNumber:int`, `selectionOrder:int?`, `resultType:SELECTED/UNFILLED`, `candidateId:UUID?`, `userId:UUID?`, `wasPublished:boolean`, `isCanceled:boolean`                                            |
-| `DrawVerification`     | `id:UUID`, `drawRunId:UUID`, `passed:boolean`, `checks:{code:string,passed:boolean,message:string}[]`, `verifiedAt:instant`, `verifiedBy:UUID`                                                                                                    |
+| `DrawExecutionAudit`   | `id:UUID`, `actorId:UUID?`, `actorName:string?`, `action:string`, `reason:string?`, `beforeData:string?`, `afterData:string?`, `requestId:string?`, `createdAt:instant`                                                                                                |
+| `CancellationSummary`  | `id:UUID`, `resultId:UUID`, `replacementRunId:UUID?`, `canceledBy:UUID`, `canceledByName:string`, `reason:string`, `canceledAt:instant`                                                                                                                                    |
+| `DrawCandidate`        | `id:UUID`, `participantId:UUID`, `userId:UUID`, `userName:string`, `ticketCount:long`, `weight:long`, `entrySnapshot:object`, `eligibilitySnapshot:object`                                                                                                           |
+| `DrawResult`           | `id:UUID`, `prizeId:UUID`, `prizeRank:int`, `slotNumber:int`, `selectionOrder:int?`, `resultType:SELECTED/UNFILLED`, `candidateId:UUID?`, `userId:UUID?`, `userName:string?`, `wasPublished:boolean`, `isCanceled:boolean`                                            |
+| `DrawVerification`     | `id:UUID`, `drawRunId:UUID`, `passed:boolean`, `checks:{code:string,passed:boolean,message:string}[]`, `verifiedAt:instant`, `verifiedBy:UUID`, `verifiedByName:string`                                                                                                    |
 
 - AD03은 요청 실행에 실제로 사용한 후보 명단을 반환한다. 재추첨 후보의 ID·수량·가중치·두 스냅샷은 최초 후보 정보를 재사용하며 매 실행의 새 후보 상세 정보로 해석하지 않는다. 원래 응모 자격·가중치를 유지하고 기존 당첨자·취소자를 제거한다. 어뷰징 차단 기록을 이유로 다른 정상 응모를 제거하지 않는다. 실제 내부 조회 경로는 백엔드 설계 문서에서 관리한다.
 - AD01 목록은 `runNumber` 내림차순, AD03 후보 목록은 후보 `id` 오름차순이다.
@@ -155,15 +159,17 @@ AD09는 해당 취소에 이미 연결된 실행의 시작·재개 용도다. AD
 
 ## 공개 명단 반영과 변경 이력
 
-`PublicationUpdateResult`: `eventId:UUID`, `publicationId:UUID`, `drawRunId:UUID`, `revision:int`, `publishedAt:instant`, `updatedAt:instant`, `updatedBy:UUID`.
+> 2026-10-21 사용자 확정·구현 예정: 아래 계약에 추가한 이름 필드는 아직 백엔드 구현·배포 완료를 뜻하지 않는다. 기존 ID·응답 구조는 유지하며 이름의 의미는 [관리자 응답의 사용자·처리자 이름](common.md#관리자-응답의-사용자처리자-이름)을 따른다.
+
+`PublicationUpdateResult`: `eventId:UUID`, `publicationId:UUID`, `drawRunId:UUID`, `revision:int`, `publishedAt:instant`, `updatedAt:instant`, `updatedBy:UUID`, `updatedByName:string`.
 
 `PublicListChange`의 현행 응답:
 
 | DTO                       | 필드                                                                                                                                                                                                                     |
 | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `PublicListChange`        | `id:UUID`, `publicationId:UUID`, `revision:int`, `drawRunId:UUID`, `reason:string?`, `confirmedBy:UUID?`, `confirmedAt:instant?`, `updatedAt:instant`, `changes:PublicSlotChange[]`, `executions:PublicationExecution[]` |
-| `PublicSlotChange`        | `prizeId:UUID`, `slotNumber:int`, `beforeUserId:UUID?`, `afterUserId:UUID?`                                                                                                                                              |
-| `PublicationExecution`    | `runId:UUID`, `confirmationId:UUID`, `confirmedBy:UUID`, `confirmedAt:instant`, `cancellations:PublicationCancellation[]`                                                                                                |
+| `PublicListChange`        | `id:UUID`, `publicationId:UUID`, `revision:int`, `drawRunId:UUID`, `reason:string?`, `confirmedBy:UUID?`, `confirmedByName:string?`, `confirmedAt:instant?`, `updatedAt:instant`, `changes:PublicSlotChange[]`, `executions:PublicationExecution[]` |
+| `PublicSlotChange`        | `prizeId:UUID`, `slotNumber:int`, `beforeUserId:UUID?`, `beforeUserName:string?`, `afterUserId:UUID?`, `afterUserName:string?`                                                                                                                                              |
+| `PublicationExecution`    | `runId:UUID`, `confirmationId:UUID`, `confirmedBy:UUID`, `confirmedByName:string`, `confirmedAt:instant`, `cancellations:PublicationCancellation[]`                                                                                                |
 | `PublicationCancellation` | `id:UUID`, `resultId:UUID`, `reason:string`                                                                                                                                                                              |
 
 `id`와 `publicationId`는 같은 공개 버전 ID다. 변경 이력은 `revision` 내림차순이며 각 버전을 실제 직전 버전과 비교한다. `executions`는 실행 번호 오름차순, 각 `cancellations`는 취소 시각·ID 오름차순이다. 목록이 없으면 빈 배열이다. 과거 INITIAL 공개의 확인자·시각·사유가 없을 수 있어 null을 보존하며, 과거 근거가 없으면 `executions=[]`일 수 있다. GD-199 신규 최초 공개는 INITIAL의 확인 근거도 포함하고 그 실행의 `cancellations`는 빈 배열이다.
@@ -218,7 +224,7 @@ AD09는 해당 취소에 이미 연결된 실행의 시작·재개 용도다. AD
 
 - 기존 AD06은 본문 없이 연결 취소 사유를 사용해 최초 공개 후 REPLACEMENT 확인·명단 반영을 수행했다. AD06은 최초 공개 후 명단 갱신 용도로 유지하고, 최초 공개는 아래 2026-10-15 확정의 result-confirmation 확장으로 처리한다.
 - 과거 재추첨 확인 계약은 `POST /admin/draws/{runId}/result-confirmation`이었다. GD-199 PR은 본문 없는 같은 경로를 INITIAL까지 확장한다. 최신 검토 실행 ID와 재시도·오류의 상세는 아래 [PR 대조 계약](#gd-199-pr-대조-계약)을 따른다.
-- 확인 응답은 eventId, confirmationId, runId, confirmedBy, confirmedAt, isPublished, publicationId, revision, publishedAt을 제공한다. 실제 미공개이면 publicationId·revision·publishedAt은 null이다. 실제 공개 전 결과를 공개로 가장하지 않는다.
+- 확인 응답은 eventId, confirmationId, runId, confirmedBy, confirmedByName, confirmedAt, isPublished, publicationId, revision, publishedAt을 제공한다. 실제 미공개이면 publicationId·revision·publishedAt은 null이다. 실제 공개 전 결과를 공개로 가장하지 않는다.
 - AD07 페이지는 page 기본 1, size 기본 20·허용 1~100이며 실제 공개 버전의 최신순이다. 추가 경로·업무 번호·모든 오류 문자열을 이번 동기화로 확정하지 않는다.
 
 ### 공개 버전에 반영된 실행별 근거
@@ -274,7 +280,7 @@ AD09는 해당 취소에 이미 연결된 실행의 시작·재개 용도다. AD
 | 동일 발표 재시도          | 최초 공개에 사용한 같은 `runId`면 당시 최초 공개 버전과 확인 기록을 반환한다. 이후 명단 갱신이 있어도 최신 버전으로 바꾸지 않으며 새 공개·알림을 만들지 않는다 |
 | 다른 실행으로 공개 재요청 | 최초 공개에 사용한 실행과 다른 `runId`면 409 `PUBLICATION-005`. 발표 후 명단 갱신은 기존 AD06을 사용한다                                                       |
 
-`DrawResultConfirmation`: `eventId:UUID`, `confirmationId:UUID`, `runId:UUID`, `confirmedBy:UUID`, `confirmedAt:instant`, `isPublished:boolean`, `publicationId:UUID?`, `revision:int?`, `publishedAt:instant?`.
+`DrawResultConfirmation`: `eventId:UUID`, `confirmationId:UUID`, `runId:UUID`, `confirmedBy:UUID`, `confirmedByName:string`, `confirmedAt:instant`, `isPublished:boolean`, `publicationId:UUID?`, `revision:int?`, `publishedAt:instant?`.
 
 - GD-199 최초 발표의 정상 성공은 `isPublished=true`와 실제 공개 식별자·버전·시각이다. 일반 응답 DTO의 nullable 필드는 기존 형식 호환용이며 미준비 최초 발표를 200·미공개 성공으로 안내하지 않는다.
 - 응답의 `confirmedBy/confirmedAt`은 요청 실행의 확인 기록이다. 기존 확인이 있으면 보존하므로 이번 실제 발표자와 다를 수 있다. 실제 발표자·시각은 공개 버전의 `PublicListChange.confirmedBy/confirmedAt`으로 확인하고, 실행별 근거는 `executions[]`로 구분한다.
@@ -294,3 +300,15 @@ UUID 해석 실패·사용자 헤더 오류는 공통 계약을 따른다. 기�
 ## 2026-10-21 최초 자동 추첨 시각 변경 — GD-268
 
 최초 자동 추첨 기준을 마감 후 5분에서 1분으로 변경한다. 관리자 `drawScheduledAt`은 `endsAt + 1분`이며 실제 실행 완료·발표 예정 시각이 아니다. 요청 경로·DTO 필드·관리자 수동 발표와 실제 공개 후 알림 계약은 유지한다. 과거 변경 이력의 5분 일정에 우선하며 [추첨 규칙](../02-domain/drawing.md#2026-10-21-최초-자동-추첨-대기-시간-단축--gd-268)을 따른다.
+
+## 2026-10-21 관리자 이름 표시 계약
+
+- 변경 전: 관리자 추첨 조회·실행 결과·공개 변경 이력에서 사용자 및 처리자의 ID만 제공했다. 변경 후: 위 DTO의 이름 필드를 함께 제공한다. 추가 필드는 구현 예정이며 현재 배포 응답에 있다고 가정하지 않는다.
+- `DrawResult.userName`은 최초·재추첨 상세의 `results[]`에 적용한다. AD09 시작/재개와 최초 재개의 `confirmation.results[]`에도 `userName:string?`을 제공한다. 미충원 결과는 `userId`와 이름이 모두 `null`이다.
+- `DrawCandidate.userName`은 후보 응답의 표시용 필드다. `entrySnapshot`·`eligibilitySnapshot`의 저장된 근거에 이름을 추가하지 않는다.
+- 재추첨 상세 `rulesSnapshot.retainedAwards[]`의 응답 항목은 기존 `resultId:UUID`, `userId:UUID`, `prizeId:UUID`, `slotNumber:int`에 `userName:string`을 추가한다. 이는 조회 시점에 보충하는 표시 정보이며 원본 저장 스냅샷·해시·정합성 검증 입력은 변경하지 않는다.
+- `DrawExecutionAudit.actorName`은 실행·재개 행위자, `CancellationSummary.canceledByName`은 취소 처리자, `DrawVerification.verifiedByName`은 검증 처리자의 이름이다. 시스템 처리에서 `actorId=null`이면 `actorName=null`이다.
+- `DrawResultConfirmation.confirmedByName`과 `PublicationExecution.confirmedByName`은 각 확인 기록 ID에 해당하는 관리자의 현재 이름이다. `PublicListChange.confirmedByName`은 그 공개 버전의 처리자, `PublicationUpdateResult.updatedByName`은 `updatedBy`의 이름이다. 이름 추가로 기존 확인자와 실제 발표자의 구분을 바꾸지 않는다. 과거 `confirmedBy=null`이면 이름도 `null`이다.
+- `PublicSlotChange.beforeUserName`·`afterUserName`은 각각 `beforeUserId`·`afterUserId`의 현재 이름이다. 빈 자리의 ID가 `null`이면 이름도 `null`이다.
+- AD05 `AwardCancellationResult`에는 새 사용자/처리자 ID를 만들지 않는다. 기존 실행 상세의 취소 요약으로 처리자 이름을 조회한다. 사용자 공개 `MaskedWinner`와 본인 결과 API는 이번 추가 대상이 아니며 기존 마스킹을 유지한다.
+- 기존 경로·권한·정렬·추첨/취소/공개 업무 처리는 유지한다. 이름 변경은 재선정이나 새 공개 버전 생성의 근거가 아니다. 공통 의미는 [관리자 응답의 사용자·처리자 이름](common.md#관리자-응답의-사용자처리자-이름)을 따른다.

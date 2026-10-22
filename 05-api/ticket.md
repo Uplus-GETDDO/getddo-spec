@@ -45,7 +45,7 @@ T02는 `createdAt DESC, id DESC` 순서의 커서 페이지다. `from`·`to`는 
 | --- | --- |
 | `TicketGrant` | `historyId:UUID`, `ticketId:UUID`, `userId:UUID`, `userName:string`, `grade:BRONZE/SILVER/GOLD/PLATINUM`, `sourceType:ATTENDANCE/MISSION/GAME`, `sourceId:UUID`, `missionId:UUID?`, `grantedAt:instant`, `expiresAt:instant` |
 | `AdminTicketHistory` | TicketHistory 전체 + `userId:UUID`, `userName:string`, `eventTitle:string?`, `missionTitle:string?` |
-| `TicketConsistency` | `userId:UUID`, `availableCount:long`, `isConsistent:boolean`, `inconsistencies:{ticketId:UUID,ticketVersion:long,latestHistoryVersion:long,ticketStatus:AVAILABLE/RETURNED/SPENT/EXPIRED,latestHistoryStatus:AVAILABLE/RETURNED/SPENT/EXPIRED?}[]`, `checkedAt:instant` |
+| `TicketConsistency` | `userId:UUID`, `userName:string`, `availableCount:long`, `isConsistent:boolean`, `inconsistencies:{ticketId:UUID,ticketVersion:long,latestHistoryVersion:long,ticketStatus:AVAILABLE/RETURNED/SPENT/EXPIRED,latestHistoryStatus:AVAILABLE/RETURNED/SPENT/EXPIRED?}[]`, `checkedAt:instant` |
 | `TicketRefund` | `id:UUID`, `spendHistoryId:UUID`, `ticketId:UUID`, `grade:BRONZE/SILVER/GOLD/PLATINUM`, `eventId:UUID`, `eventTitle:string`, `userId:UUID`, `userName:string`, `reasonType:EVENT_CANCELED`, `refundedAt:instant`, `targetExpiresAt:instant?` |
 | `TicketInconsistency` | `ticketId:UUID`, `userId:UUID`, `userName:string`, `grade:BRONZE/SILVER/GOLD/PLATINUM`, `ticketVersion:long`, `latestHistoryVersion:long`, `ticketStatus:AVAILABLE/RETURNED/SPENT/EXPIRED`, `latestHistoryStatus:AVAILABLE/RETURNED/SPENT/EXPIRED?`, `checkedAt:instant` |
 
@@ -74,3 +74,9 @@ AO08은 처리 이력 조회다. 이를 근거로 이벤트 취소 완료 후 �
 ## 2026-10-17 플래티넘 등급 계약 반영
 
 위 등급 목록에는 플래티넘(`PLATINUM`) 추가 정책을 반영했다. 플래티넘 지원의 서비스 적용 시점과 구현·프론트엔드 연동 검증은 후속 사항이며, 기존의 구현 반영 표기를 플래티넘 지원 완료로 해석하지 않는다. 확률·가중치는 [응모권 규칙](../02-domain/ticket.md#게임미션-보상의-등급-추첨), 전환 후속은 [등급 응모권 후속 사항](../00-requirements/pending-decisions.md#등급-응모권)을 따른다.
+
+## 2026-10-21 관리자 정합성 조회 사용자 이름 추가
+
+> 2026-10-21 사용자 확정·구현 예정: 아래 계약에 추가한 이름 필드는 아직 백엔드 구현·배포 완료를 뜻하지 않는다. 기존 ID·응답 구조는 유지하며 이름의 의미는 [관리자 응답의 사용자·처리자 이름](common.md#관리자-응답의-사용자처리자-이름)을 따른다.
+
+변경 전에는 AO04 `TicketConsistency`가 사용자 ID만 제공했다. 변경 후 `userName:string`을 추가한다. 기존 응모권 지급·이력·반환·불일치 목록의 `userName`은 유지하며 별도 필드를 중복 추가하지 않는다. 정합성 판단·집계·오류 계약은 변경하지 않는다.

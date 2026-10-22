@@ -1,5 +1,7 @@
 # 공용 결정 기록
 
+- [ADR-028: 관리자 응답에 사용자·처리자의 현재 이름 제공](028-admin-user-display-names.md) — 제안 / 사용자 표시 방식 확정·담당자 문서 검토 대기
+
 - [ADR-025: 플래티넘 응모권 추가와 획득 확률 조정](025-platinum-ticket-grade.md) — 제안 / 사용자 수치 확정·담당자 검토 대기
 
 - [ADR-024: 감사 기록 유지와 공통 감사 조회 제외](024-audit-recording-without-query.md) — 제안 / 사용자 정책 결정 반영·문서 검토 대기

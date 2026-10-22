@@ -9,7 +9,7 @@
 
 확정된 업무 정책은 연결된 요구사항·도메인 문서를 따른다. 관리자 알림의 경로·메서드·DTO·업무 오류 코드는 2026-10-12 사용자 확인으로 아래 범위를 확정했다.
 
-결과 발표 알림은 관리자의 발표 요청으로 최초 결과가 실제 공개될 때 발생한다. 마감 후 1분 경과·자동 추첨 완료·명단 검토만으로 생성하지 않는다. 발표 요청 재시도로 동일 공개 건의 알림을 중복 생성하지 않는다. 이는 [결과 발표 요구사항](../00-requirements/functional-requirements.md#10-결과-발표)과 [알림 도메인](../02-domain/notification.md#결과-발표)의 문구 동기화이며 N01~N03·AN01~AN05의 경로·DTO·오류 계약은 변경하지 않는다.
+결과 발표 알림은 관리자의 발표 요청으로 최초 결과가 실제 공개될 때 발생한다. 마감 후 1분 경과·자동 추첨 완료·명단 검토만으로 생성하지 않는다. 발표 요청 재시도로 동일 공개 건의 알림을 중복 생성하지 않는다. 이는 [결과 발표 요구사항](../00-requirements/functional-requirements.md#10-결과-발표)과 [알림 도메인](../02-domain/notification.md#결과-발표-알림)의 문구 동기화이며 N01~N03·AN01~AN05의 경로·DTO·오류 계약은 변경하지 않는다.
 
 ## 사용자 알림 — N01~N03 확정
 
@@ -102,12 +102,12 @@ nextAttemptAt:instant?, createdAt:instant, completedAt:instant?, generationStopp
 
 `NotificationJobDetail`: NotificationJob 필드 + lastError:string?, sourceJobId:UUID?, lastProcessedUserId:UUID?, leaseUntil:instant?.
 
-`AdminNotification`: id:UUID, jobId:UUID, userId:UUID, eventId:UUID?, title:string, body:string,
+`AdminNotification`: id:UUID, jobId:UUID, userId:UUID, userName:string, eventId:UUID?, title:string, body:string,
 linkUrl:string?, createdAt:instant, isRead:boolean, mockDeliveryStatus:PENDING/SENT/FAILED,
 mockSentAt:instant?, deliveryAttemptCount:int, nextDeliveryAttemptAt:instant?, lastDeliveryError:string?, retryable:boolean.
 
 - notificationType은 EVENT_START, RESULT_PUBLISHED, ENTRY_EXCLUDED, EVENT_SCHEDULE_CHANGED, EVENT_CANCELED, RESULT_CHANGED다. 과거 타입의 조회 지원은 신규 제외 알림 발생 기능을 의미하지 않는다.
-- 초안의 targetUserId는 실제 작업의 다중 수신자 구조에 맞지 않아 제거했다. 전체 수신자 목록·개인정보는 응답에 추가하지 않는다.
+- 초안의 targetUserId는 실제 작업의 다중 수신자 구조에 맞지 않아 제거했다. 생성 작업 응답에는 전체 수신자 목록·개인정보를 추가하지 않는다. 관리자 개별 알림 `AdminNotification`의 수신자 현재 이름 `userName`은 아래 2026-10-21 계약으로 허용한다. 일반 사용자 알림 응답·본문에 다른 사용자의 이름을 추가하는 계약이 아니다.
 - attemptCount와 deliveryAttemptCount는 누적 처리 차수이며 수동 복구 때 0으로 초기화하지 않는다.
 - generationStoppedBy가 있으면 중지된 생성 작업이다. status가 PENDING/PROCESSING이어도 실행·복구 대상이 아니다.
 - retryable은 조회 시점의 복구 가능 여부다. 접수 시에는 상태·이벤트 조건을 다시 확인한다.
@@ -137,3 +137,9 @@ mockSentAt:instant?, deliveryAttemptCount:int, nextDeliveryAttemptAt:instant?, l
 | 500 | COMMON-001 | 예상하지 못한 서버 오류 |
 
 응모권 회수 기능 제외에 따라 신규 TICKET_REVOKED 알림은 생성하지 않는다. 이번 계약은 기존 데이터 삭제를 요구하지 않는다.
+
+## 2026-10-21 관리자 알림 수신자 이름 추가
+
+> 2026-10-21 사용자 확정·구현 예정: 아래 계약에 추가한 이름 필드는 아직 백엔드 구현·배포 완료를 뜻하지 않는다. 기존 ID·응답 구조는 유지하며 이름의 의미는 [관리자 응답의 사용자·처리자 이름](common.md#관리자-응답의-사용자처리자-이름)을 따른다.
+
+변경 전에는 AN04 목록·AN05 발송 재시도 응답의 `AdminNotification`에 수신자 ID만 제공했다. 변경 후 `userName:string`을 추가한다. 원본 알림·본문에 당시 이름을 저장하거나 수신자·발송·읽음 상태를 변경하지 않는다. `NotificationJob`·`NotificationJobDetail`에는 수신자 명단을 추가하지 않고 내부 처리 위치인 `lastProcessedUserId`에도 이름 필드를 추가하지 않는다.
